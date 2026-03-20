@@ -13,13 +13,13 @@ class NetworkGraph:
     def add_link(self,node1_id,node2_id,label,bandwidth,delay):
         self.graph.add_edge(node1_id,node2_id,label=label,bandwidth=bandwidth,delay=delay)
 
-
+    #描画
     def draw(self):
-        #
+        #リンクの帯域(bandwidth)によって線の太さを変える。
         def get_edge_width(bandwidth):
             return np.log10(bandwidth) + 1  
         
-
+        #遅延(delay)の大きさによって線の色を変える。赤<黄色<緑
         def get_edge_color(delay):
             if delay <= 0.001:
                 return 'green'

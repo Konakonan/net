@@ -1,0 +1,24 @@
+[tool.black]
+line-length = 100 
+
+[tool.tox]
+legacy_tox_ini = """
+    [tox]
+    skipsdist = true
+    env_list =
+        black
+        ruff
+        mupy
+
+    [black]
+    dels = black
+    commands = black .
+
+    [ruff]
+    deps = ruff
+    commands = ruff check .
+
+    [mupy]
+    deps = mupy
+    commands = mupy .
+"""

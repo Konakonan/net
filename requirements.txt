@@ -1,0 +1,15 @@
+
+#PEP 8
+black
+ruff
+
+#型チェック
+mypy
+
+#一括実行
+tox
+
+#
+numpy
+networkx
+matplotlib

@@ -19,20 +19,21 @@ class Node:
     def __init__(
             self,
             node_id:int,#ID
-            network_graph:NetworkGraph,
+            network_event_scheduler:NetworkGraph,
             address:str| None =None,#アドレス
             )->None:
         
+        self.network_event_scheduler = network_event_scheduler
         self.node_id = node_id
         self.address = address
         #リンク先のアドレスを格納する配列
         self.links = []
 
-        #NetworkGraphを定義
-        self.network_graph = network_graph
 
         label = f"Node{node_id}/n{address}"
-        self.network_graph.add_node(node_id,label)
+        #NetworkGraphを定義
+        self.network_event_scheduler.add_node(node_id,label)
+
     
     #Linkの追加
     def add_link(self,link:Link)->None:
@@ -41,21 +42,51 @@ class Node:
 
     #Packetの送信するメゾット
     def send_packet(self,packet:Packet)->None:
-        if packet.destination == self.address:
+        self.network_event_scheduler.log_packet_info(packet,"sent",self.node_id)
+        if packet.header["destination"] == self.address:
+            #宛先が自身の場合は受信処理
             self.receive_packet(packet)
         
         else:
             for link in self.links:
                 next_node = link.node_x if self != link.node_x else link.node_y
                 print(f"ノード{self.node_id}からノード{next_node.node_id}へのパケット転送")
-                link.transfer_packet(packet,self)
+                link.enqueu_packet(packet,self)
                 break
 
         
     
     #Packetの受信するメゾット
     def receive_packet(self,packet:Packet)->None:
-        print(f"ノード{self.node_id}がパケットを受信: {packet.payload}") 
+        #
+        if packet.set_arrival_time == -1:
+            self.network_event_scheduler.log_packet_info(packet,"lost",self.node_id)
+            return
+        
+        if packet.header["destination"] == self.address:
+            self.network_event_scheduler.log_packet_info(packet,"arrived",self.node_id)
+            packet.set_arrived(self.network_event_scheduler.current_time)
+
+        else:
+            self.network_event_scheduler.log_packet_info(packet,"received",self.node_id) 
+
+    #
+    def crrent_packet(self,destination,header_size,payload_size):
+        packet = Packet(source=self.address,destination=destination,header_size=header_size,payload_size=payload_size,network_event_scheduler=self.network_event_scheduler)
+        self.network_event_scheduler.log_packet_info(packet,"created",self,self.node_id)
+        self.send_packet(packet)
+
+    #
+    def set_traffic(self,destination,bitrate,start_time,duration,header_size,payload_size,burstiness=1.0):
+        end_time = start_time + duration
+        def generate_packet():
+            if self.network_event_scheduler.current_time < end_time:
+                self.crrent_packet(destination,header_size,payload_size)
+                packet_size = header_size + payload_size
+                interval = (packet_size *8) /bitrate * burstiness
+                self.network_event_scheduler.schedule_event(self.network_event_scheduler.current_time + interval,generate_packet)
+            
+            self.network_event_scheduler.schedule_event(start_time,generate_packet)
 
 
 

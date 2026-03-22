@@ -40,9 +40,8 @@ class NetworkGraph:
         nx.draw(self.graph,pos,with_labels=False,node_color='lightblue',node_size=2000,width=edge_widths,edge_color=edge_colors)
 
         #deraw_networkx_labels()はパラメータで詳細を設定する関数
-        #_attributes()は、辞書の値を便利に取ってくる関数
-        nx.draw_networkx_labels(self.graph,pos,labels=nx.get_node_attributes(self.graph,'label'))
-        nx.draw_networkx_edge_labels(self.graph,pos,edge_labels=nx.get_edge_attributes(self.graph,'label'))
-
+        #get_<>_attributes()はkeyの値を便利に取得
+        nx.draw_networkx_labels(self.graph,pos,labels=nx.get_node_attributes(self.graph,"label"))
+        nx.draw_networkx_edge_labels(self.graph,pos,labels=nx.get_edge_attributes(self.graph,"label"))
 
         plt.show()

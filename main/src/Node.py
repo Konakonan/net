@@ -2,25 +2,37 @@
 from __future__ import annotations
 #循環参照の回避
 from typing import TYPE_CHECKING
+
 from Link import Link
 from Packet import Packet  
+from NetworkGraph import NetworkGraph
 
 if TYPE_CHECKING:
     from Link import Link   
-    from Packet import Packet  
+    from Packet import Packet
+    from NetworkGraph import NetworkGraph
+
 
 #Nodeクラスを作成
+#デフォルト値無し↑、デフォルト値有り↓。
 class Node:
     def __init__(
             self,
             node_id:int,#ID
-            address:str=None#アドレス
+            network_graph:NetworkGraph,
+            address:str| None =None,#アドレス
             )->None:
         
         self.node_id = node_id
         self.address = address
         #リンク先のアドレスを格納する配列
         self.links = []
+
+        #NetworkGraphを定義
+        self.network_graph = network_graph
+
+        label = f"Node{node_id}/n{address}"
+        self.network_graph.add_node(node_id,label)
     
     #Linkの追加
     def add_link(self,link:Link)->None:

@@ -64,7 +64,7 @@ class NetworkEventSchaduler:
                     "size" : packet.size,
                     "creation_time" : packet.creation_time,
                     "arrival_time" : packet.arrival_time,
-                    "events" : [],
+                    "events" : []
                 }
 
 
@@ -87,7 +87,10 @@ class NetworkEventSchaduler:
 
 
     def print_packet_logs(slef):
-        pass
+        for packet_id, log in self.packet_logs.items():
+            print(f'Packet ID: {packet_id} Src: {log['source']} {log['creation_time']} -> Dst: {log['destination']} {log['arrival_time']}')
+            for event in log['events']:
+                print(f'Time: {event['time']},Event: {event['event']}')
 
     def generate_summary(self,packet_logs):
         summary_date = defaultdict(lambda: {"sent_packets":0,
@@ -96,18 +99,124 @@ class NetworkEventSchaduler:
                                             "recevied_bytes":0,
                                             "total_delay":0,
                                             "lost_packets":0,
-                                            "mine_creation_time":float("inf"),
+                                            "min_creation_time":float("inf"),
                                             "max_arrival_time":0
                                             })
+        
+        for packet_id, log in packet_logs.items():
+            src_dst_pair = (log['source'], log['destination'])
+            summary_date[src_dst_pair]['sent_packets'] += 1
+            summary_date[src_dst_pair]['sent_bytes'] += log['size']
+            summary_date[src_dst_pair]['min_cureation_time'] = min(summary_date[src_dst_pair]['max_arrival_time'], log['cureation_time'])
+
+            if "arrival_time" in log and log['arrival_time'] is not None:
+                summary_date[src_dst_pair]['sent_packets'] += 1
+                summary_date[src_dst_pair]['sent_bytes'] += log['size']
+                summary_date[src_dst_pair]['total_delay'] += log['arrivaL_time'] - log['creation_time']
+                summary_date[src_dst_pair]['max_arrival_time'] = max(summary_date[src_dst_pair]['max_arrival_time'], log['arrival_time'])
+            else:
+                summary_date[src_dst_pair]['lost_packets'] +=1
+
+        for src_dst, date in summary_date.times():
+            sent_packets = date['sent_packets']
+            sent_bytes = date['sent_bytes']
+            received_packets = date['received_packets']
+            received_bytes = date['received_bytes']
+            total_delay = date['total_delay']
+            lost_packets = date['lost_packets']
+            min_creation_time = date['min_creation_time']
+            max_arrival_time = date['max_arrival_time']
+
+            traffic_duration = max_arrival_time - min_creation_time
+            avg_throughput = (received_bytes * 8 / traffic_duration) if traffic_duration > 0 else 0
+            avg_delay = total_delay / received_packets if received_packets > 0 else 0
+
+            print(f'Src_Dst Pair: {src_dst}')
+            print(f'Total Sent Packets: {sent_packets}')
+            print(f'Total Sent Bytes: {sent_bytes}')
+            print(f'Total Recevied Paclets: {received_packets}')
+            print(f'Total Recevied Bytes: {received_bytes}')
+            print(f'Avg Throughpu (bps): {avg_throughput}')
+            print(f'Avh Drlay (s): {avg_delay}')
+            print(f'Lost Packets: {lost_packets}')
+
+                
     def generate_throughput_grapg(self):
-        pass
-    def generate_delay_histogram(self):
-        pass
+        time_slote = 1.0 #時間スロットを固定しておく
+        max_time = max(log['arrival_time'] for log in packet_log.values() if log['arrival_time'] is not None) 
+        min_time = min(log['arrival_time'] for log in packet_log.values())
+        num_slots = int((max_time - min_time)/ time_slote) + 1
+         
+        throughput_data = defaultdict(list)
+        for packet_id, log in packet_log.items():
+            if log['arrival_time'] is not None:
+                src_dst_pair = (log['sorce'].log['distination'])
+                slot_index = int((log['arrival_time'] - min_time) / time_slote)
+                throughput_data[src_dst_pair].append((slot_index,log['size']))
+        
+        aggregated_throughput = defaultdict(lambda : defaultdict(int))
+        for paket_id, log in packet_logs.items():
+            if log['arrival_time'] is not None:
+                src_dst_pair = (log['source'],log['destination'])
+                slot_index = int((log['arrival_time'] - min_time) / time_slote)
+                throughput_data['src_dst_pair'].append((slot_index,log['size']))
+
+        aggregated_throughput = defaultdict(lambda : defaultdict(int))
+        for src_dst, packes in throughput_data.items():
+            for slot_index in range(num_slots):
+                slot_throughput = sum(size * 8 for i ,size in packes if i == slot_index)
+
+                aggregated_throughput['src_dict']['slot_index'] = slot_throughput /time_slote
+
+        for src_dst,slot_date in aggregated_throughput.items():
+            time_slote = list(range(num_slots))
+            throughputs = [slot_date['slot'] for slot in time_slote]
+            times = [min_time + slot * time_slote for slot in time_slote]
+            plt.step = (times,throughputs,label = f'{src_dst[0]} -> {src_dst[1]}',where = 'post',linestye = '-',alpha=0.5,marker='o')
+    
+        plt.xlabel('Time(s)')
+        plt.ylabel('Thtoughput(bps)')
+        plt.title('Troughput over time')
+        plt.legend()
+        plt.show()        
+
+    def generate_delay_histogram(self,packet_logs):
+        delay_date = defaultdict(list)
+        for packet_id ,log in packet_logs.items():
+            if log['arrival_time'] is not None:
+                src_dst_pair = (log['source'],log['destinaion'])
+                delay = log['destinaion'] - log['creation_time']
+                delay_date['src_dst_pair'].append(delay)
+
+
+        num_plots = len(delay_date)
+        num_bins = 20
+        fig, axs = plt.subplots(num_plots,figsize=(6,2 * num_plots))
+        max_delay = max(max(delay) for delays in delay_date.values())
+        bin_width = max_delay / num_bins
+        
+        for i , (src_dst, delays) in enumerate(delay_date.items()):
+            ax = axs[i] if num_plots > 1 else axs
+            ax.hist(delays, bins = np.arange(0,max_delay + bin_width,bin_width),alpha = 0.5, color = 'royalbule', label = f'{src_dst[0]} -> {src_dst[1]}')
+            ax.set_xlabel('Delay (s)')
+            ax.set_ylabel('Freqyency')
+            ax.set_title(f'Delay histogram for {src_dst[0]} -> {src_dst[1]}')
+            ax.set_xlim(0, max_delay)
+            ax.legend()
+        
+        plt.tight_layout()
+        plt.show()
 
     def run(self):
-        pass
+        while self.events:
+            event_time, _ ,callback, args = heapq.heappop(self.events)
+            self.current_time = event_time
+            callback(*args)
 
-    def run_util(self):
-        pass
+    def run_util(self,end_time):
+        while self.events and self.events[0][0] <= end_time:
+            event_time, _ ,callback, args = heapq.heappop(self.events)
+            self.current_time = event_time
+            callback(*args)
 
 

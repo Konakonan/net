@@ -6,11 +6,12 @@ from typing import TYPE_CHECKING
 from Link import Link
 from Packet import Packet  
 from NetworkGraph import NetworkGraph
+from NetworkEventScheduler import NetworkEventSchaduler
 
 if TYPE_CHECKING:
     from Link import Link   
     from Packet import Packet
-    from NetworkGraph import NetworkGraph
+    #from NetworkGraph import NetworkGraph
 
 
 #Nodeクラスを作成
@@ -19,7 +20,7 @@ class Node:
     def __init__(
             self,
             node_id:int,#ID
-            network_event_scheduler:NetworkGraph,
+            network_event_scheduler:NetworkEventSchaduler,
             address:str| None =None,#アドレス
             )->None:
         
@@ -42,51 +43,62 @@ class Node:
 
     #Packetの送信するメゾット
     def send_packet(self,packet:Packet)->None:
+        #パケット送信をログに記録
         self.network_event_scheduler.log_packet_info(packet,"sent",self.node_id)
+        #宛先が自身の場合は受信処理
         if packet.header["destination"] == self.address:
-            #宛先が自身の場合は受信処理
             self.receive_packet(packet)
         
         else:
             for link in self.links:
                 next_node = link.node_x if self != link.node_x else link.node_y
                 print(f"ノード{self.node_id}からノード{next_node.node_id}へのパケット転送")
-                link.enqueu_packet(packet,self)
+                #リンクを通じてパケットを送信
+                link.enqueue_packet(packet,self)
+                #ループを抜ける
                 break
 
         
     
     #Packetの受信するメゾット
     def receive_packet(self,packet:Packet)->None:
-        #
-        if packet.set_arrival_time == -1:
+        #パケットが失われた場合
+        if packet.arrival_time == -1:
             self.network_event_scheduler.log_packet_info(packet,"lost",self.node_id)
             return
-        
+        #パケットが到着した場合
         if packet.header["destination"] == self.address:
+            #パケット到着をログに記録
             self.network_event_scheduler.log_packet_info(packet,"arrived",self.node_id)
+            #到着時刻を設定
             packet.set_arrived(self.network_event_scheduler.current_time)
 
         else:
+            #パケットの受信をログに記録
             self.network_event_scheduler.log_packet_info(packet,"received",self.node_id) 
 
-    #
-    def crrent_packet(self,destination,header_size,payload_size):
-        packet = Packet(source=self.address,destination=destination,header_size=header_size,payload_size=payload_size,network_event_scheduler=self.network_event_scheduler)
+    #パケットを生成するメゾット
+    def crent_packet(self,destination,header_size,payload_size):
+        packet = Packet(source=self.address, destination=destination, header_size=header_size, payload_size=payload_size,network_event_scheduler=self.network_event_scheduler)
         self.network_event_scheduler.log_packet_info(packet,"created",self,self.node_id)
         self.send_packet(packet)
 
-    #
-    def set_traffic(self,destination,bitrate,start_time,duration,header_size,payload_size,burstiness=1.0):
+    #トラフィックを設定するメゾット
+    def set_traffic(self, destination, bitrate, start_time, duration, header_size, payload_size,burstiness=1.0):
+        #トラフィックの終了時刻
         end_time = start_time + duration
         def generate_packet():
             if self.network_event_scheduler.current_time < end_time:
-                self.crrent_packet(destination,header_size,payload_size)
+                #パケットを生成して送信
+                self.crent_packet(destination, header_size, payload_size)
+
                 packet_size = header_size + payload_size
+                #次のパケットを生成するまでの間隔
                 interval = (packet_size *8) /bitrate * burstiness
-                self.network_event_scheduler.schedule_event(self.network_event_scheduler.current_time + interval,generate_packet)
+                self.network_event_scheduler.schedule_event(self.network_event_scheduler.current_time + interval, generate_packet)
             
-            self.network_event_scheduler.schedule_event(start_time,generate_packet)
+        #最初のパケット生成イベントをスケジュール
+        self.network_event_scheduler.schedule_event(start_time,generate_packet)
 
 
 
